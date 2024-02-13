@@ -1,0 +1,305 @@
+----------------------------------------------------------------------------------------------------
+--                                                       IA 643
+--                                        Database Application Security and Auditing
+--
+--                                                    Group Project#6
+--                                                 Virtual Private Database
+--
+--                                                   Group 3 & Team members
+--                                                 1.Maktal Warsame
+--                                                 2.Gopi Thungam
+--                                                 3.Faozia Soukeina Traore
+
+
+
+
+
+
+-- Connect to the IA643 database as the administrator for the MSIA643 course.
+--CONN DBA643/msIA643_Fall@localhost/IA643;
+
+-- Clear out the recycle bin.
+Run PURGE RECYCLEBIN;
+
+-- TableSpace creation section.
+-- Remove the existing tablespace if it exists, along with its contents and data files.
+DROP TABLESPACE IA643F21_TBS
+INCLUDING CONTENTS AND DATAFILES;
+
+-- Create a new tablespace with specified parameters.
+CREATE TABLESPACE IA643F21_TBS
+    DATAFILE 'IA643FFFFF21.dat' size 500K
+    AUTOEXTEND ON NEXT 300K MAXSIZE 50M;
+
+-- User account creation for Joe Harris.
+-- Remove the existing user if it exists.
+DROP USER JAdmin ;
+
+-- Create a new user account with specified privileges and settings.
+CREATE USER JAdmin
+    IDENTIFIED BY JAdmin
+    DEFAULT TABLESPACE IA643F21_TBS
+    QUOTA 200K ON IA643F21_TBS
+    TEMPORARY TABLESPACE TEMP
+    ACCOUNT UNLOCK;
+
+-- Grant necessary permissions to the user.
+GRANT CONNECT, RESOURCE TO JAdmin;
+
+-- User account creation for Peter Admin.
+-- Remove existing user if it exists.
+DROP USER PAdmin ;
+
+-- Create a new user account with specific privileges.
+CREATE USER PAdmin
+    IDENTIFIED BY PAdmin
+    DEFAULT TABLESPACE IA643F21_TBS
+    QUOTA 200K ON IA643F21_TBS
+    TEMPORARY TABLESPACE TEMP
+    ACCOUNT UNLOCK;
+
+-- Grant necessary permissions to the user.
+GRANT CONNECT, RESOURCE TO PAdmin;
+
+-- User account creation for Felisa Davis.
+-- Remove existing user if it exists.
+DROP USER FAdmin ;
+
+-- Create a new user account with specific privileges.
+CREATE USER FAdmin
+    IDENTIFIED BY FAdmin
+    DEFAULT TABLESPACE IA643F21_TBS
+    QUOTA 200K ON IA643F21_TBS
+    TEMPORARY TABLESPACE TEMP
+    ACCOUNT UNLOCK;
+
+-- Grant necessary permissions to the user.
+GRANT CONNECT, RESOURCE TO FAdmin;
+
+-- User account creation for Kevin Admin.
+-- Remove existing user if it exists.
+DROP USER KAdmin ;
+
+-- Create a new user account with specific privileges.
+CREATE USER KAdmin
+    IDENTIFIED BY KAdmin
+    DEFAULT TABLESPACE IA643F21_TBS
+    QUOTA 200K ON IA643F21_TBS
+    TEMPORARY TABLESPACE TEMP
+    ACCOUNT UNLOCK;
+
+-- Grant necessary permissions to the user.
+GRANT CONNECT, RESOURCE TO KAdmin;
+
+-- Section for creating public synonyms and granting privileges.
+-- Remove and recreate public synonyms for various tables, granting privileges to admin accounts.
+
+DROP PUBLIC SYNONYM COMPANY;
+CREATE PUBLIC SYNONYM COMPANY FOR DBA643.COMPANY;
+GRANT SELECT, INSERT, UPDATE, DELETE ON COMPANY TO JAdmin, PAdmin,FAdmin, KAdmin;
+
+DROP PUBLIC SYNONYM EMPLOYEE;
+CREATE PUBLIC SYNONYM EMPLOYEE FOR DBA643.EMPLOYEE;
+GRANT SELECT, INSERT, UPDATE, DELETE ON EMPLOYEE TO JAdmin, PAdmin,FAdmin, KAdmin;
+
+DROP PUBLIC SYNONYM TIMESHEET;
+CREATE PUBLIC SYNONYM TIMESHEET FOR DBA643.TIMESHEET;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TIMESHEET TO JAdmin, PAdmin,FAdmin, KAdmin;
+
+DROP PUBLIC SYNONYM PAYROLL_PERIOD;
+CREATE PUBLIC SYNONYM PAYROLL_PERIOD FOR DBA643.PAYROLL_PERIOD;
+GRANT SELECT, INSERT, UPDATE, DELETE ON PAYROLL_PERIOD TO JAdmin, PAdmin,FAdmin, KAdmin;
+
+DROP PUBLIC SYNONYM DAILY_WORK_HOURS;
+CREATE PUBLIC SYNONYM DAILY_WORK_HOURS FOR DBA643.DAILY_WORK_HOURS;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DAILY_WORK_HOURS TO JAdmin, PAdmin,FAdmin, KAdmin;
+
+DROP PUBLIC SYNONYM COMPANY_ADMINISTRATORS;
+CREATE PUBLIC SYNONYM COMPANY_ADMINISTRATORS FOR DBA643.COMPANY_ADMINISTRATORS;
+GRANT SELECT, INSERT, UPDATE, DELETE ON COMPANY_ADMINISTRATORS TO JAdmin, PAdmin,FAdmin, KAdmin;
+
+-- Section for creating triggers for each table to track record ownership.
+-- Triggers for COMPANY, EMPLOYEE, TIMESHEET, PAYROLL_PERIOD, and DAILY_WORK_HOURS tables.
+
+
+
+CREATE OR REPLACE TRIGGER Trig_Insert_user_Comp
+BEFORE INSERT OR UPDATE
+ON COMPANY FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+CREATE OR REPLACE TRIGGER Trig_Insert_user_Emp
+BEFORE INSERT OR UPDATE
+ON EMPLOYEE FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+CREATE OR REPLACE TRIGGER Trig_Insert_user_Timesheet
+BEFORE INSERT OR UPDATE
+ON TIMESHEET FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+CREATE OR REPLACE TRIGGER Trig_Insert_user_Payrollperiod
+BEFORE INSERT OR UPDATE
+ON PAYROLL_PERIOD FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+CREATE OR REPLACE TRIGGER Trig_Insert_user_Dailyworkhours
+BEFORE INSERT OR UPDATE
+ON DAILY_WORK_HOURS FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+
+-------------------Connecting to SYS account to create user sysadmin_ctx  account​ and provide grants----------------------------
+
+CONN sys/msIA643_Fall@localhost/IA643 AS SYSDBA;
+
+
+CREATE USER Sysadmin_ctx IDENTIFIED BY sysadmin_ctx;
+GRANT CREATE SESSION, CREATE ANY CONTEXT, CREATE PROCEDURE, CREATE TRIGGER, ADMINISTER DATABASE TRIGGER TO Sysadmin_ctx IDENTIFIED BY sysadmin_ctx;
+GRANT EXECUTE ON DBMS_SESSION TO Sysadmin_ctx;
+GRANT EXECUTE ON DBMS_RLS TO Sysadmin_ctx;
+GRANT RESOURCE TO Sysadmin_ctx;
+
+-----------------------Grant tables access to Sysadmin_ctx -------------------------
+
+CONN DBA643/msIA643_Fall@localhost/IA643;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DBA643.COMPANY TO Sysadmin_ctx;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DBA643.EMPLOYEE TO Sysadmin_ctx;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DBA643.TIMESHEET TO Sysadmin_ctx;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DBA643.DAILY_WORK_HOURS TO Sysadmin_ctx;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DBA643.COMPANY_ADMINISTRATORS TO sysadmin_ctx;
+
+
+-------------------Creating Package----------------------------------
+
+CONN Sysadmin_ctx/"sysadmin_ctx"@localhost/IA643;
+
+CREATE OR REPLACE CONTEXT Admin_App_Context USING Payroll_Admin_Package;
+
+CREATE OR REPLACE PACKAGE Payroll_Admin_Package IS
+PROCEDURE Get_Comp_ID;
+END;
+/
+CREATE OR REPLACE PACKAGE BODY Payroll_Admin_Package IS
+PROCEDURE Get_Comp_ID IS
+  V_Comp_ID Number;
+BEGIN
+SELECT a.Company_id INTO V_Comp_ID FROM DBA643.COMPANY_ADMINISTRATORS a WHERE UPPER(a.system_username)=UPPER(SYS_CONTEXT('USERNV','SESSION_USER'));
+
+
+DBMS_SESSION.SET_CONTEXT('ADMIN_APP_CONTEXT','CompID',V_Comp_ID);
+EXCEPTION
+WHEN NO_DATA_FOUND THEN NULL;
+END;
+END;
+/
+Show error;
+
+--------------------------------------------Creating Security Functions-----------------------------------------------------------
+
+CONN DBA643/msIA643_Fall@localhost/IA643;
+
+CREATE OR REPLACE FUNCTION Adm_REP_Comp_fun (P_schema_name IN varchar2, P_object_name IN varchar2) Return varchar2 IS
+  V_where Varchar2(300);
+BEGIN
+  If User = 'DBA643' then
+    V_where := '';
+  Else
+  V_where := 'Company_id  = ' || NVL(SYS_CONTEXT('Admin_App_Context', 'CompID'),0);
+  END IF;
+  RETURN V_Where;
+END;
+/
+
+CREATE OR REPLACE FUNCTION Adm_REP_Emp_fun (P_schema_name IN varchar2, P_object_name IN varchar2) Return varchar2 IS
+  V_where Varchar2(300);
+BEGIN
+  If User = 'DBA643' then
+    V_where := '';
+  Else
+  V_where := 'Company_id  = ' || NVL(SYS_CONTEXT('Admin_App_Context', 'CompID'),0);
+  END IF;
+  RETURN V_Where;
+END;
+/
+
+
+CREATE OR REPLACE FUNCTION Adm_REP_TS_fun (P_schema_name IN varchar2, P_object_name IN varchar2) Return varchar2 IS
+  V_where Varchar2(300);
+BEGIN
+  If User = 'DBA643' then
+    V_where := '';
+  Else
+  V_where := 'Employee_Id IN (SELECT Employee_Id FROM employee WHERE Company_Id = ' || NVL(SYS_CONTEXT('ADMIN_APP_CONTEXT', 'COMPANY_ID'), 0) || ')';            
+                             
+               
+  END IF;
+  RETURN V_Where;
+END;
+/
+
+CREATE OR REPLACE FUNCTION Adm_REP_DWH_fun (P_schema_name IN varchar2, P_object_name IN varchar2) Return varchar2 IS
+  V_where Varchar2(300);
+BEGIN
+  If User = 'DBA643' then
+    V_where := '';
+  Else
+  V_where :=  'TS_ID IN (SELECT TS_ID FROM timesheet INNER JOIN employee on timesheet.Employee_Id = employee.Employee_Id WHERE Company_Id = ' || NVL(SYS_CONTEXT('ADMIN_APP_CONTEXT', 'COMPANY_ID'), 0) || ')';
+  END IF;
+  RETURN V_Where;
+END;
+/
+
+
+------------Add policy function--------------------
+
+exec DBMS_RLS.ADD_Policy('DBA643','COMPANY','Role_Sec_Policy','Sysadmin_ctx','Adm_REP_Comp_fun','SELECT,UPDATE,DELETE, INSERT',TRUE);
+exec DBMS_RLS.ADD_Policy('DBA643','EMPLOYEE', 'Role_Sec_Policy1','Sysadmin_ctx','Adm_REP_Emp_fun','SELECT,UPDATE,DELETE, INSERT',TRUE);
+exec DBMS_RLS.ADD_Policy('DBA643','PAYROLL_PERIOD', 'Role_Sec_Policy2','Admin_App_Context','Adm_REP_PayPrd_fun','SELECT,UPDATE,DELETE, INSERT',TRUE);
+exec DBMS_RLS.ADD_Policy('DBA643','TIMESHEET', 'Role_Sec_Policy3','Sysadmin_ctx','Adm_REP_TS_fun','SELECT,UPDATE,DELETE, INSERT',TRUE);
+exec DBMS_RLS.ADD_Policy('DBA643','DAILY_WORK_HOURS', 'Role_Sec_Policy4','Sysadmin_ctx','Adm_REP_DWH_fun','SELECT,UPDATE,DELETE, INSERT',TRUE);
+
+
+--DROP policy function if it was created; only dba can drop and add policy; When table is dropped, it's gone
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'COMPANY', 'Role_Sec_Policy');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'EMPLOYEE', 'Role_Sec_Policy1');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'PAYROLL_PERIOD', 'Role_Sec_Policy2');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'TIMESHEET', 'Role_Sec_Policy3');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'DAILY_WORK_HOURS', 'Role_Sec_Policy4');
+
+
+---------------Create an after-logon trigger to set the application context-------------------
+
+CONN Sysadmin_ctx/"sysadmin_ctx"@localhost/IA643;
+
+CREATE OR REPLACE TRIGGER Trg_After_Logon
+AFTER LOGON
+ON DATABASE
+BEGIN
+  sysadmin_ctx.Payroll_Admin_Package.Get_Comp_ID;
+END;
+/
+
+
+
+-----------------------Clean up code------------------------------------------------------------
+
+
+Conn SYS/msIA643@localhost/IA643 as Sysdba;
+DROP USER sysadmin_ctx CASCADE;
+DROP CONTEXT Admin_App_Context;

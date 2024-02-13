@@ -1,0 +1,129 @@
+SELECT * FROM EMPLOYEES;
+
+CREATE TABLE EMPLOYEES (
+EMPLOYEE_ID NUMBER(6) NOT NULL, 
+FIRST_NAME VARCHAR2(20), 
+LAST_NAME VARCHAR2(25), 
+EMAIL VARCHAR2(25), 
+PHONE_NUMBER VARCHAR2(20), 
+HIRE_DATE DATE, 
+JOB_ID VARCHAR2(10), 
+SALARY NUMBER(8,2), 
+COMMISSION_PCT NUMBER(2, 2), 
+MANAGER_ID NUMBER(6), 
+DEPARTMENT_ID NUMBER(4), 
+CTL_UPD_USER VARCHAR2(30)
+);
+
+INSERT INTO EMPLOYEES VALUES (
+    100, 'Joe', 'Kang', 'jkang@gmail.com', 32022525254, '1-Jan-2006', 'MK_Rep', 67000,0.1, 999, 20, 'ACHEN');
+
+INSERT INTO EMPLOYEES VALUES (
+    200, 'Jenny', 'Wang', 'Jwang@yahoo.com',3200000142,'20-jan-2007', 'MK_Rep', 77000,0.1, 999, 20, 'ACHEN'); 
+
+
+INSERT INTO EMPLOYEES (EMPLOYEE_ID, FIRST_NAME, LAST_NAME, DEPARTMENT_ID, CTL_UPD_USER) VALUES (400, 'Bob', 'Peterson', 10, 'JDOE');
+
+
+-- Create a view to allow viewing user's own record 
+
+Drop View Emp_By_User;
+
+CREATE VIEW Emp_By_User AS 
+
+SELECT EMPLOYEE_ID, FIRST_NAME, LAST_NAME, EMAIL, PHONE_NUMBER, HIRE_DATE, JOB_ID, SALARY, MANAGER_ID, DEPARTMENT_ID, CTL_UPD_USER
+
+FROM EMPLOYEES 
+WHERE CTL_UPD_USER = USER; 
+
+
+
+CREATE PUBLIC SYNONYM Employees_ for Emp_By_User;
+
+GRANT SELECT ON Employee_ To ACHEN, JDOE;
+
+-- VPD Security Policy Function. 
+-- The following code implement a policy function to enforece the row level security. 
+
+-- Setp 1 Logon as DBA643, then create Cust table and a trigger to insert record owner
+
+
+Drop table cust;
+CREATE TABLE Cust(
+    Cus_no number(4) constraint emp_pk Primary key, 
+    Cus_name varchar2(20), 
+    Cus_Address varchar2(30), 
+    Cus_phone number(10), 
+    Cus_Rep_ID Number(4), 
+    CTL_UPD_USER Varchar2(30)
+    
+    );
+    
+    
+CREATE OR REPLACE TRIGGER Trg_Insert_user
+Before INSERT ON CUST For each Row
+
+begin
+    :new.ctl_upd_user := user;
+end;
+/
+
+-- DBA643 Inserts a few testing records 
+
+INSERT INTO Cust (
+    cus_no, Cus_name, Cus_Address, Cus_phone, Cus_Rep_ID) VALUES (
+    101, 'Joe Pluber', '897 Apple Lane', 8076568356, 111);
+    
+INSERT INTO Cust (
+    Cus_no, Cus_name, Cus_Address, Cus_phone, Cus_Rep_ID) VALUES (
+    102, 'Bob Bednark', '657 High Field', 6155552525, 222);
+    
+INSERT INTO Cust (
+    Cus_no, Cus_name, Cus_Address, Cus_phone, Cus_Rep_ID) VALUES (
+    103, 'John Kerns', '3456 Field Lane', 3200001252, 111);
+    
+INSERT INTO Cust (
+    Cus_no, Cus_name, Cus_Address, Cus_phone, Cus_Rep_ID) VALUES (
+    104, 'Giabaly Gato', '6789 Goetten Way', 3205768910, 222);
+    
+
+-- Step 2 
+CREATE PUBLIC SYNONYM Customers for CUST;
+GRANT SELECT, INSERT, UPDATE, DELETE on Customers to ACHEN, JDOE; 
+
+-- Step 3 Create policy function; When DBA643 SELECT, he should see all records 
+
+CREATE OR REPLACE FUNCTION Sec_Fun_Cust (
+    P_schema_name IN varchar2, P_object_name IN varchar2)
+    Return varchar2 IS V_Where Varchar2(300);
+BEGIN
+    If USER = 'DBA643' then 
+        V_Where := '';
+    ELSE
+        V_Where := 'CTL_UPD_USER = USER'; 
+    END IF; 
+    RETURN V_Where;
+END;
+/
+
+ /*Step 4 DROP policy function if it was created; only dba can drop and add policy; 
+ when table is dropped, the function is gone  too */
+ 
+
+
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'Cust',
+'Row_Owner_Sec');
+
+
+-- Add policy function
+EXEC DBMS_RLS.ADD_POLICY
+('DBA643','Cust','Row_Owner_Sec','DBA643','Sec_Fun_Cust','SELECT, UPDATE, DELETE, INSERT',TRUE);
+
+
+-- Step 5 Logon as AChen to test
+
+
+
+
+
+    

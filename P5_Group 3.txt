@@ -1,0 +1,124 @@
+----------------------------------------------------------------------------------------------------
+--                                                       IA 643
+--                                        Database Application Security and Auditing
+--
+--                                                    Group Project#5
+--                                                 Virtual Private Database
+--
+--                                                   Group 3 & Team members
+--                                                 1.Maktal Warsame
+--                                                 2.Gopi Thungam
+--                                                 3.Faozia Soukeina Traore
+
+
+
+
+CONN DBA643/msIA643_Fall@localhost/IA643;
+
+/**drop tablespace**/
+DROP TABLESPACE IA643F21_TBS INCLUDING CONTENTS AND DATAFILES;
+CREATE TABLESPACE IA643F21_TBS DATAFILE 'IA643F21.dat' size 500K AUTOEXTEND ON NEXT 300K MAXSIZE 50M;
+
+-- Set up a new user account for Joe Harris, representing the Nexum client
+DROP USER JAdmin;
+CREATE USER JAdmin IDENTIFIED BY JAdmin DEFAULT TABLESPACE IA643F21_TBS QUOTA 200K ON IA643F21_TBS TEMPORARY TABLESPACE TEMP ACCOUNT UNLOCK;
+
+GRANT CONNECT, RESOURCE TO JAdmin;
+
+-- Establish a user account for Felisa Davis for Rashima client
+DROP USER FAdmin;
+CREATE USER FAdmin IDENTIFIED BY FAdmin DEFAULT TABLESPACE IA643F21_TBS QUOTA 200K ON IA643F21_TBS TEMPORARY TABLESPACE TEMP ACCOUNT UNLOCK;
+
+GRANT CONNECT, RESOURCE TO FAdmin;
+
+-- Define Public Synonyms for the COMPANY table
+DROP PUBLIC SYNONYM COMPANY;
+CREATE PUBLIC SYNONYM COMPANY FOR DBA643.COMPANY;
+-- Allocate role-based permissions
+GRANT SELECT, INSERT, UPDATE, DELETE ON COMPANY to JAdmin,FAdmin;
+
+-- Define Public Synonyms for the EMPLOYEE table
+DROP PUBLIC SYNONYM EMPLOYEE;
+CREATE PUBLIC SYNONYM EMPLOYEE FOR DBA643.EMPLOYEE;
+GRANT SELECT, INSERT, UPDATE, DELETE ON EMPLOYEE to JAdmin,FAdmin;
+
+-- Define Public Synonyms for the TIMESHEET table
+DROP PUBLIC SYNONYM TIMESHEET;
+CREATE PUBLIC SYNONYM TIMESHEET FOR DBA643.TIMESHEET;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TIMESHEET to JAdmin,FAdmin;
+
+-- Define Public Synonyms for the PAYROLL_PERIOD table
+DROP PUBLIC SYNONYM PAYROLL_PERIOD;
+CREATE PUBLIC SYNONYM PAYROLL_PERIOD FOR DBA643.PAYROLL_PERIOD;
+GRANT SELECT, INSERT, UPDATE, DELETE ON PAYROLL_PERIOD to JAdmin,FAdmin;
+
+-- Define Public Synonyms for the DAILY_WORK_HOURS table
+DROP PUBLIC SYNONYM DAILY_WORK_HOURS;
+CREATE PUBLIC SYNONYM DAILY_WORK_HOURS FOR DBA643.DAILY_WORK_HOURS;
+GRANT SELECT, INSERT, UPDATE, DELETE ON DAILY_WORK_HOURS to JAdmin,FAdmin;
+
+-- Implement Trigger for tracking record ownership in COMPANY
+CREATE OR REPLACE TRIGGER COMPANY_v
+BEFORE INSERT OR UPDATE ON COMPANY FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+-- Implement Trigger for tracking record ownership in EMPLOYEE
+CREATE OR REPLACE TRIGGER EMPLOYEE_v
+BEFORE INSERT OR UPDATE ON EMPLOYEE FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+-- Implement Trigger for tracking record ownership in TIMESHEET
+CREATE OR REPLACE TRIGGER TIMESHEET_v
+BEFORE INSERT OR UPDATE ON TIMESHEET FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+-- Implement Trigger for tracking record ownership in PAYROLL_PERIOD
+CREATE OR REPLACE TRIGGER PAYROLL_PERIOD_v
+BEFORE INSERT OR UPDATE ON PAYROLL_PERIOD FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+-- Implement Trigger for tracking record ownership in DAILY_WORK_HOURS
+CREATE OR REPLACE TRIGGER DAILY_WORK_HOURS_v
+BEFORE INSERT OR UPDATE ON DAILY_WORK_HOURS FOR EACH ROW
+BEGIN
+  :NEW.CTL_SEC_USER := USER;
+END;
+/
+
+-- Define a function for security policies
+CREATE OR REPLACE FUNCTION Sec_Fun_Cust (P_schema_name IN VARCHAR2, P_object_name IN VARCHAR2) Return VARCHAR2 IS
+  V_where VARCHAR2(300);
+BEGIN
+  If User = 'DBA643' then
+    V_where := '';
+  Else
+  V_where := 'CTL_SEC_USER = USER';
+  END IF;
+  RETURN V_Where;
+END;
+/
+--- Remove existing security policies ---
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'COMPANY', 'Row_Owner_Sec');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'EMPLOYEE', 'Row_Owner_Sec');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'TIMESHEET', 'Row_Owner_Sec');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'PAYROLL_PERIOD', 'Row_Owner_Sec');
+EXEC DBMS_RLS.DROP_POLICY('DBA643', 'DAILY_WORK_HOURS', 'Row_Owner_Sec');
+
+-- Implement new security policies
+exec DBMS_RLS.ADD_Policy ('DBA643','COMPANY','Row_Owner_Sec','DBA643','Sec_Fun_Cust','SELECT, INSERT, UPDATE, DELETE',TRUE);
+exec DBMS_RLS.ADD_Policy ('DBA643','EMPLOYEE','Row_Owner_Sec','DBA643','Sec_Fun_Cust','SELECT, INSERT, UPDATE, DELETE',TRUE);
+exec DBMS_RLS.ADD_Policy ('DBA643','TIMESHEET','Row_Owner_Sec','DBA643','Sec_Fun_Cust','SELECT, INSERT, UPDATE, DELETE',TRUE);
+exec DBMS_RLS.ADD_Policy ('DBA643','PAYROLL_PERIOD','Row_Owner_Sec','DBA643','Sec_Fun_Cust','SELECT, INSERT, UPDATE, DELETE',TRUE);
+exec DBMS_RLS.ADD_Policy ('DBA643','DAILY_WORK_HOURS','Row_Owner_Sec','DBA643','Sec_Fun_Cust','SELECT, INSERT, UPDATE, DELETE',TRUE);
